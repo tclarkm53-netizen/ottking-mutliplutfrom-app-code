@@ -1,0 +1,68 @@
+name: Final 100% Working Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App Version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # নোট: Keystore এবং key.properties অলরেডি রিপোজিটরিতে থাকায় ডিকোড করার স্টেপটি বাদ দেওয়া হয়েছে।
+      # গ্র্যাডল সরাসরি রিপোজিটরির android/key.properties থেকে রিড করবে।
+
+      - name: Get Flutter Dependencies
+        run: flutter pub get
+
+      - name: Build Split APKs (Maximum Small Size)
+        run: |
+          flutter build apk --release --no-tree-shake-icons \
+            --split-per-abi \
+            --build-name=${{ github.event.inputs.version }} \
+            --obfuscate --split-debug-info=build/app/outputs/symbols
+
+      - name: Build Signed AAB
+        run: |
+          flutter build appbundle --release --no-tree-shake-icons \
+            --build-name=${{ github.event.inputs.version }} \
+            --obfuscate --split-debug-info=build/app/outputs/symbols
+
+      - name: Rename and Organize Files
+        run: |
+          mkdir -p release_files
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk release_files/OTTking-${{ github.event.inputs.version }}-arm32.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk release_files/OTTking-${{ github.event.inputs.version }}-arm64.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk release_files/OTTking-${{ github.event.inputs.version }}-x64.apk
+          cp build/app/outputs/bundle/release/app-release.aab release_files/OTTking-${{ github.event.inputs.version }}.aab
+
+      - name: Create GitHub Release and Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          files: release_files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
