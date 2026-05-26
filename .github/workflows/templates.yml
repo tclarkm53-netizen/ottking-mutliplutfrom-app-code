@@ -1,3 +1,44 @@
-Name: Genarate Flutter android empty templates
+name: Initialize Flutter Project
+
 on:
-	
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'অ্যাপের নাম (অবশ্যই lowercase এবং underscore ব্যবহার করবেন, যেমন: ottking_app)'
+        required: true
+        default: 'ottking_app'
+      org_name:
+        description: 'প্যাকেজ অর্গানাইজেশন নেম (যেমন: com.ottking)'
+        required: true
+        default: 'com.ottking'
+
+jobs:
+  create-project:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Create New Flutter Project (Android Only)
+        run: |
+          # .git এবং .github ফোল্ডার বাদে বাকি সব ক্লিন করা
+          find . -maxdepth 1 ! -name '.' ! -name '..' ! -name '.git' ! -name '.github' -exec rm -rf {} +
+          
+          # ডাইনামিক ইনপুট নিয়ে প্রজেক্ট তৈরি
+          flutter create --project-name=${{ github.event.inputs.project_name }} --org ${{ github.event.inputs.org_name }} --platforms=android .
+          
+      - name: Config Git and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Initialize default Flutter project (${{ github.event.inputs.project_name }}) for Android via GitHub Actions"
+          git push origin main
