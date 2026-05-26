@@ -1,5 +1,4 @@
-name: Generate Keystore and Configure Android
-
+name: Force Generate New Keystore and Configure Android
 on:
   workflow_dispatch:
     inputs:
@@ -27,42 +26,63 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Generate Keystore and Setup Properties
+      - name: Force Clean and Generate New Keystore
         run: |
-          # ১. অ্যান্ড্রয়েড অ্যাপের সঠিক ডিরেক্টরিতে release.jks তৈরি করা
+          # ১. আগে যদি কোনো ফাইল থেকে থাকে, সেগুলোকে সম্পূর্ণ রিমুভ করা হচ্ছে (রিরাইট নিশ্চিত করতে)
+          rm -f android/app/release.jks
+          rm -f android/app/key.properties
+          rm -f android/key.properties
+
+          # ২. অ্যান্ড্রয়েড অ্যাপের সঠিক ডিরেক্টরি তৈরি করা
           mkdir -p android/app
+
+          # ৩. Bash এনভায়রনমেন্টের জন্য পাসওয়ার্ড ভ্যারিয়েবল প্রিপেয়ার করা
+          RAW_PASS="${{ github.event.inputs.key_password }}"
+          ALIAS="${{ github.event.inputs.key_alias }}"
+          DEV_NAME="${{ github.event.inputs.developer_name }}"
+
+          # ৪. গ্র্যাডল (Java) যেন '&' রিড করতে পারে, তাই পাসওয়ার্ডে '\&' এস্কেপ করা হলো
+          ESCAPED_PASS=$(echo "$RAW_PASS" | sed 's/&/\\&/g')
+
+          # ৫. নতুন ফ্রেশ Keystore জেনারেট করা
           keytool -genkey -v \
             -keystore android/app/release.jks \
-            -alias "${{ github.event.inputs.key_alias }}" \
+            -alias "$ALIAS" \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass "${{ github.event.inputs.key_password }}" \
-            -keypass "${{ github.event.inputs.key_password }}" \
-            -dname "CN=${{ github.event.inputs.developer_name }}, OU=Dev, O=OTTking, L=Dhaka, S=Dhaka, C=BD"
+            -storepass "$RAW_PASS" \
+            -keypass "$RAW_PASS" \
+            -dname "CN=$DEV_NAME, OU=Dev, O=OTTking, L=Dhaka, S=Dhaka, C=BD"
 
-          # ২. অটোমেটিকভাবে android/key.properties ফাইল তৈরি করা
-          cat <<EOF > android/key.properties
-          storePassword=${{ github.event.inputs.key_password }}
-          keyPassword=${{ github.event.inputs.key_password }}
-          keyAlias=${{ github.event.inputs.key_alias }}
+          # ৬. স্বয়ংক্রিয়ভাবে android/app/key.properties ফাইল রাইট করা
+          cat <<EOF > android/app/key.properties
+          storePassword=$ESCAPED_PASS
+          keyPassword=$ESCAPED_PASS
+          keyAlias=$ALIAS
           storeFile=release.jks
           EOF
 
-          echo "Keystore and key.properties setup complete."
+          echo "New Keystore and key.properties generated successfully."
 
-      - name: Commit and Push Changes
+      - name: Force Commit and Push Changes to Main
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # -f ব্যবহার করা হয়েছে যাতে .gitignore থাকা সত্ত্বেও ফাইল দুটি গিট ট্র্যাকে অ্যাড হয়
-          git add -f android/app/release.jks android/key.properties
+          # আগের ট্র্যাক করা ফাইল থাকলে তা গিট ইনডেক্স থেকে রিমুভ করে ফ্রেশ অ্যাড করা
+          git rm --cached android/app/release.jks android/app/key.properties || echo "No tracked files to remove"
           
-          git commit -m "Configure Android app signing properties and keystore automatically" || echo "No changes to commit"
+          # ফোর্সড অ্যাড (যাতে .gitignore ফাইলে থাকলেও গিট বাধ্য হয়ে ট্র্যাক করে)
+          git add -f android/app/release.jks
+          git add -f android/app/key.properties
+          
+          git commit -m "🚨 FORCE REWRITE: New app signing properties and keystore generated" || echo "No changes to commit"
+          
+          # মেইন ব্রাঞ্চে ফোর্স পুশ করা হচ্ছে
           git push origin main
