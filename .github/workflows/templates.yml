@@ -1,4 +1,4 @@
-name: Initialize Flutter Project
+name: Create a  Flutter Project (Android)
 
 on:
   workflow_dispatch:
