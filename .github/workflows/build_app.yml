@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4 # Upgraded from v3 to v4 to fix the download/runner bug
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -31,7 +31,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # নোট: Keystore এবং key.properties অলরেডি রিপোজিটরিতে থাকায় ডিকোড করার স্টেপটি বাদ দেওয়া হয়েছে।
+      # নোট: Keystore এবং key.properties অলরেডি রিপোজিটরিতে থাকায় ডিকোড করার স্টেপটি বাদ দেওয়া হয়েছে।
       # গ্র্যাডল সরাসরি রিপোজিটরির android/key.properties থেকে রিড করবে।
 
       - name: Get Flutter Dependencies
@@ -59,7 +59,7 @@ jobs:
           cp build/app/outputs/bundle/release/app-release.aab release_files/OTTking-${{ github.event.inputs.version }}.aab
 
       - name: Create GitHub Release and Upload
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2 # Upgraded to v2 for native Node 20 runner compatibility
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
