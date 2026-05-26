@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       project_name:
-        description: 'অ্যাপের নাম (অবশ্যই lowercase এবং underscore ব্যবহার করবেন, যেমন: ottking_app)'
+        description: 'App name (must be in lowercase and use underscores, e.g., ottking_app)'
         required: true
         default: 'ottking_app'
       org_name:
-        description: 'প্যাকেজ অর্গানাইজেশন নেম (যেমন: com.ottking)'
+        description: 'Package organization name (e.g., com.ottking)'
         required: true
         default: 'com.ottking'
 
@@ -29,10 +29,10 @@ jobs:
 
       - name: Create New Flutter Project (Android Only)
         run: |
-          # .git এবং .github ফোল্ডার বাদে বাকি সব ক্লিন করা
+
           find . -maxdepth 1 ! -name '.' ! -name '..' ! -name '.git' ! -name '.github' -exec rm -rf {} +
           
-          # ডাইনামিক ইনপুট নিয়ে প্রজেক্ট তৈরি
+
           flutter create --project-name=${{ github.event.inputs.project_name }} --org ${{ github.event.inputs.org_name }} --platforms=android .
           
       - name: Config Git and Push
