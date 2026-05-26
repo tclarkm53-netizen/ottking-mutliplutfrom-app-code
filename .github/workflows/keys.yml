@@ -1,0 +1,68 @@
+name: Generate Keystore and Configure Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      key_alias:
+        description: 'Keystore Alias (যেমন: ottking_alias)'
+        required: true
+        default: 'ottking_alias'
+      key_password:
+        description: 'Keystore & Store Password'
+        required: true
+        default: 'ottking_by_anirbansumon_&_im_rasel'
+      developer_name:
+        description: 'CN Name (আপনার নাম বা ব্র্যান্ডের নাম)'
+        required: true
+        default: 'AnirbanSumon'
+
+jobs:
+  configure_signing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Generate Keystore and Setup Properties
+        run: |
+          # ১. অ্যান্ড্রয়েড অ্যাপের মেইন ডিরেক্টরিতে জেনারেট করা release.jks রাখা
+          mkdir -p android/app
+          keytool -genkey -v \
+            -keystore android/app/release.jks \
+            -alias "${{ github.event.inputs.key_alias }}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "${{ github.event.inputs.key_password }}" \
+            -keypass "${{ github.event.inputs.key_password }}" \
+            -dname "CN=${{ github.event.inputs.developer_name }}, OU=Dev, O=OTTking, L=Dhaka, S=Dhaka, C=BD"
+
+          # ২. অটোমেটিকভাবে android/key.properties ফাইল তৈরি করা
+          cat <<EOF > android/key.properties
+          storePassword=${{ github.event.inputs.key_password }}
+          keyPassword=${{ github.event.inputs.key_password }}
+          keyAlias=${{ github.event.inputs.key_alias }}
+          storeFile=release.jks
+          EOF
+
+          echo "Keystore and key.properties setup complete."
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # তৈরি হওয়া ফাইলগুলো গিটে অ্যাড করা
+          git add android/app/release.jks android/key.properties
+          
+          git commit -m "Configure Android app signing properties and keystore automatically" || echo "No changes to commit"
+          git push origin main
