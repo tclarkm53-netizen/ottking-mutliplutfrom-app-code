@@ -1,4 +1,4 @@
-# ottking
+# ottking_app
 
 A new Flutter project.
 
