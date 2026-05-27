@@ -15,21 +15,29 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.ottking.ottking"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        
+        // টিভির জন্য মিনিমাম SDK ২১ (Android 5.0) ফিক্সড করা হলো
+        minSdk = 21 
+        
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // স্মার্ট টিভির ৩২-বিট ও মোবাইলের ৬৪-বিট আর্কিটেকচার হ্যান্ডেল করার জন্য এটি যুক্ত করা হলো
+        ndk {
+            abiFilters.addAll(setOf("armeabi-v7a", "arm64-v8a", "x86_64"))
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // TODO: রিলিজ করার সময় আপনার নিজস্ব signing config এখানে যুক্ত করবেন।
             signingConfig = signingConfigs.getByName("debug")
+            
+            // অপ্রয়োজনীয় কোড রিমুভ করে অ্যাপ সাইজ ছোট করার জন্য (ঐচ্ছিক)
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
